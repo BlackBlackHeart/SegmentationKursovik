@@ -5,7 +5,7 @@ import random, sys
 
 class ImageWorker:
 	orient = [(1, 0), (0, 1), (-1, 0), (0, -1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
-	def __init__(self, filename, threshold):
+	def __init__(self, filename, threshold, neighborhood):
 		try:
 			self.image = Image.open(filename)
 		except IOError:
@@ -20,12 +20,11 @@ class ImageWorker:
 			self.grayMatrix.append([0 for x in range(self.height)])
 
 		self.regionCount = 0
-		self.mode = "fou"
+		self.mode = neighborhood
 		self.threshold = int(threshold) # граница
 		self.stack = []
 
 	def howMuch(self):
-		#print(self.threshold)
 		print(self.regionCount)
 
 	def makeGray(self):
@@ -122,11 +121,11 @@ class ImageWorker:
 		self.drawImage()
 		self.image.show()
 
-if len(sys.argv) < 2:
-	print ('Usage : python .py filename threshold')
+if len(sys.argv) < 4:
+	print ('Usage : python .py filename threshold neighborhood')
 	sys.exit()
 
-some = ImageWorker(sys.argv[1], sys.argv[2])
+some = ImageWorker(sys.argv[1], sys.argv[2], sys.argv[3])
 some.StartAll()
 
 
