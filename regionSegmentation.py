@@ -29,23 +29,9 @@ class ImageWorker:
 	def howMuch(self):
 		print(self.regionCount)
 
-	def defineThresholds(self):
-		# считаем количество пикселей каждой яркости
-		for i in range(self.height):
-			for j in range(self.width):
-				if self.grayMatrix[j][i][0] in self.ThresholdDict:
-					self.ThresholdDict[self.grayMatrix[j][i][0]] +=1 # проверить работает ли адекватно
-				else:
-					self.ThresholdDict[self.grayMatrix[j][i][0]] = 1 
+	def redefineThreshold(self, forRegion):
+		self.ThresholdDict[forRegion] = max(self.threshold - math.floor(self.region_amount[forRegion]/5), 2)
 		
-		# определяем новую границу для каждой яркости. Расположение не учитывается
-		for key in self.ThresholdDict:
-			if self.threshold - self.ThresholdDict[key]/2 <=0: # пока такая формула
-				#self.ThresholdDict[key] = 1
-				self.ThresholdDict[key] = self.threshold
-			else:
-				self.ThresholdDict[key] = self.threshold
-				#self.ThresholdDict[key] = math.ceil(self.threshold - self.ThresholdDict[key]/2)
 
 	# def printThresh(self):
 	# 	for key in self.ThresholdDict:
@@ -73,6 +59,7 @@ class ImageWorker:
 		self.regionCount+=1
 		self.grayMatrix[coord1][coord2] = (self.grayMatrix[coord1][coord2][0], self.regionCount)
 		self.region_amount[self.regionCount] = 1
+		self.redefineThreshold(self.regionCount)
 		
 
 	def checkConnectivity(self, coord1, coord2):
@@ -97,13 +84,17 @@ class ImageWorker:
 		minkey = min(deltaDict, key=deltaDict.get) #выбираем ключ с наименьшей дельтой
 		ix = minkey[0]
 		iy = minkey[1]
-		t1 = self.ThresholdDict[self.grayMatrix[coord1][coord2][0]]
-		t2 = self.ThresholdDict[self.grayMatrix[coord1+ix][coord2+iy][0]]
+		try:
+			t1 = self.ThresholdDict[self.grayMatrix[coord1][coord2][1]]
+		except:
+			t1 = self.threshold
+		t2 = self.ThresholdDict[self.grayMatrix[coord1+ix][coord2+iy][1]]
 		
 		if deltaDict[minkey] <= min(t1, t2):	
 			reg = self.grayMatrix[coord1+ix][coord2+iy][1]
 			self.grayMatrix[coord1][coord2] = (self.grayMatrix[coord1][coord2][0], reg)
 			self.region_amount[reg]+=1
+			self.redefineThreshold(reg)
 
 			del deltaDict[minkey]
 			self.checkRegions(deltaDict, (coord1, coord2))
@@ -163,8 +154,8 @@ class ImageWorker:
 		for key in ndict:
 			ix = key[0]
 			iy = key[1]
-			t1 = self.ThresholdDict[self.grayMatrix[coord1][coord2][0]]
-			t2 = self.ThresholdDict[self.grayMatrix[coord1+ix][coord2+iy][0]]
+			t1 = self.ThresholdDict[self.grayMatrix[coord1][coord2][1]]
+			t2 = self.ThresholdDict[self.grayMatrix[coord1+ix][coord2+iy][1]]
 			if abs(self.grayMatrix[coord1+ix][coord2+iy][0]-self.grayMatrix[coord1][coord2][0]) < min(t1, t2):
 				self.mergeRegions((coord1+ix, coord2+iy), basePoint)
 	
@@ -195,7 +186,6 @@ class ImageWorker:
 			
 	def StartAll(self):
 		self.makeGray()
-		self.defineThresholds()
 		# self.printThresh()
 		self.startRegionGrow()
 		self.howMuch()
