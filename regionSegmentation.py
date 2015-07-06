@@ -1,6 +1,6 @@
 from PIL import Image, ImageDraw, ImageColor, ImageFilter
 import random, sys, math, pdb
-
+from random import random
 
 
 class ImageWorker:
@@ -169,12 +169,13 @@ class ImageWorker:
 		return AllColors
 
 	def drawImage(self):
-		colors = self.generateColors(self.regionCount)
-		regColors = [ ImageColor.getrgb(  colors[ int(random.random() * len(colors)) ] )  for x in range(self.regionCount)]
+		random_color = lambda: (int(random()*255), int(random()*255), int(random()*255))
+		colors = [random_color() for i in range(self.regionCount)]
+		
 		for i in range(self.width):
 			for j in range(self.height):
 				reg = self.grayMatrix[i][j][1]
-				self.draw.point((i,j), regColors[reg-1])			
+				self.draw.point((i,j), colors[reg-1])			
 					
 
 	
