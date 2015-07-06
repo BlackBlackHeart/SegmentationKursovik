@@ -5,7 +5,8 @@ from random import random
 
 class ImageWorker:
 	orient = [(-1, 0), (0, -1), (-1, -1), (1, -1)]
-	def __init__(self, filename, threshold, neighborhood):
+	radius = [(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1)]
+	def __init__(self, filename, threshold, neighborhood, minR):
 		try:
 			self.image = Image.open(filename)
 			#self.image = self.image.filter(ImageFilter.FIND_EDGES)
@@ -16,6 +17,7 @@ class ImageWorker:
 		self.draw = ImageDraw.Draw(self.image)
 		self.width = self.image.size[0]
 		self.height = self.image.size[1]
+		
 		self.pix = self.image.load()
 		self.grayMatrix = []
 		for x in range(self.width):
@@ -24,6 +26,7 @@ class ImageWorker:
 		self.regionCount = 0
 		self.mode = int(neighborhood)
 		self.threshold = int(threshold) 
+		self.minRegion = int(minR)
 		self.stack = []
 		self.ThresholdDict = {}
 		self.region_amount ={}
@@ -134,11 +137,11 @@ class ImageWorker:
 			self.addPoint(elem, regFrom, regTo)			
 
 	def addPoint(self, nextPoint, regFrom, regTo):
-		radius = [(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1)]
+		
 		coord1 = nextPoint[0]
 		coord2 = nextPoint[1]
 		
-		for item in radius:
+		for item in self.radius:
 			ix = item[0]
 			iy = item[1]
 			if coord1+ix < 0 or coord1+ix > self.width-1 or coord2+iy < 0 or coord2+iy > self.height-1  or self.grayMatrix[coord1+ix][coord2+iy][1]!= regFrom:
@@ -161,13 +164,6 @@ class ImageWorker:
 				self.mergeRegions((coord1+ix, coord2+iy), basePoint)
 	
 
-	def generateColors(self, count):
-		AllColors = [x for x in ImageColor.colormap]
-		#delim = len(AllColors)// count
-		#resultList = [ImageColor.getrgb(AllColors[delim*x]) for x in range(count)]
-
-		return AllColors
-
 	def drawImage(self):
 		random_color = lambda: (int(random()*255), int(random()*255), int(random()*255))
 		colors = [random_color() for i in range(self.regionCount)]
@@ -178,29 +174,44 @@ class ImageWorker:
 				self.draw.point((i,j), colors[reg-1])			
 					
 
-	
+	def removeSmallRegions(self):
+		for i in range(self.width):
+			for j in range(self.height):
+				if self.region_amount[self.grayMatrix[i][j][1]] < self.minRegion:
+					self.mergeWithSmth((i, j))
 
+	def mergeWithSmth(self, pointToMerge):
+		coord1 = pointToMerge[0]
+		coord2 = pointToMerge[1]
+		for item in self.radius:
+			ix = item[0]
+			iy = item[1]
+			if coord1+ix < 0 or coord1+ix > self.width-1 or coord2+iy < 0 or coord2+iy > self.height-1:
+				pass
+			else:
+				if self.region_amount[self.grayMatrix[coord1+ix][coord2+iy][1]] > self.minRegion:
+					self.mergeRegions(pointToMerge, (coord1+ix, coord2+iy))
+					return
+		self.mergeRegions(pointToMerge, (coord1+ix, coord2+iy))
 
-
-
-	# def findBigRegions
 						
 			
 	def StartAll(self):
 		self.makeGray()
 		self.startRegionGrow()
+		self.removeSmallRegions()
 		self.howMuch()
 		self.drawImage()
 		self.image.show()
 
-if len(sys.argv) < 4:
-	print ('Usage : python .py filename threshold neighborhood')
+if len(sys.argv) < 5:
+	print ('Usage : python .py filename threshold neighborhood min_size')
 	sys.exit()
 if True != (int(sys.argv[3])== 4 or int(sys.argv[3])== 8):
 	print ('wrong neighborhood. Use only 4 or 8')
 	sys.exit()
 
-some = ImageWorker(sys.argv[1], sys.argv[2], sys.argv[3])
+some = ImageWorker(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
 some.StartAll()
 
 
