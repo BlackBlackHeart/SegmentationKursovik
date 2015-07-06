@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw, ImageColor
+from PIL import Image, ImageDraw, ImageColor, ImageFilter
 import random, sys, math, pdb
 
 
@@ -8,6 +8,8 @@ class ImageWorker:
 	def __init__(self, filename, threshold, neighborhood):
 		try:
 			self.image = Image.open(filename)
+			#self.image = self.image.filter(ImageFilter.FIND_EDGES)
+			self.image = self.image.filter(ImageFilter.CONTOUR)
 		except IOError:
 			print("File not found")
 			exit(0)
@@ -27,18 +29,11 @@ class ImageWorker:
 		self.region_amount ={}
 
 	def howMuch(self):
-		print(self.regionCount)
+		print(len(self.region_amount))
 
 	def redefineThreshold(self, forRegion):
 		self.ThresholdDict[forRegion] = max(self.threshold - math.floor(self.region_amount[forRegion]/5), 2)
 		
-
-	# def printThresh(self):
-	# 	for key in self.ThresholdDict:
-	# 		print("{0} : {1}".format(key, self.ThresholdDict[key]))
-
-
-
 
 	def makeGray(self):
 		for i in range(self.width):
@@ -65,6 +60,7 @@ class ImageWorker:
 	def checkConnectivity(self, coord1, coord2):
 		
 		deltaDict = {}
+		helpRegList = []
 
 		if self.mode == 4:
 			self.orient = self.orient[:2]
@@ -75,7 +71,9 @@ class ImageWorker:
 				pass
 			else:
 				delta = abs(self.grayMatrix[coord1+ix][coord2+iy][0]-self.grayMatrix[coord1][coord2][0])
-				deltaDict[item] = delta
+				if self.grayMatrix[coord1+ix][coord2+iy][1] not in helpRegList:
+					deltaDict[item] = delta
+					helpRegList.append(self.grayMatrix[coord1+ix][coord2+iy][1])
 
 		if len(deltaDict) == 0:
 			self.createNewRegion(coord1, coord2)
@@ -93,7 +91,7 @@ class ImageWorker:
 		if deltaDict[minkey] <= min(t1, t2):	
 			reg = self.grayMatrix[coord1+ix][coord2+iy][1]
 			self.grayMatrix[coord1][coord2] = (self.grayMatrix[coord1][coord2][0], reg)
-			self.region_amount[reg]+=1
+			self.region_amount[reg]+=1	
 			self.redefineThreshold(reg)
 
 			del deltaDict[minkey]
@@ -117,6 +115,10 @@ class ImageWorker:
 		if regTo == regFrom:
 			return
 
+		self.region_amount[regTo]+= self.region_amount[regFrom]
+		self.redefineThreshold(regTo)
+		del self.region_amount[regFrom]
+
 		self.stack.append(second)
 		self.actualMerge(second, regFrom, regTo)
 
@@ -128,24 +130,23 @@ class ImageWorker:
 		self.addPoint(nextPoint, regFrom, regTo)
 		while len(self.stack) != 0:
 
-			#pdb.set_trace()
 			elem = self.stack.pop()
 			self.addPoint(elem, regFrom, regTo)			
 
 	def addPoint(self, nextPoint, regFrom, regTo):
-		radius = [(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0)]
+		radius = [(-1, 0), (-1, -1), (0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1)]
 		coord1 = nextPoint[0]
 		coord2 = nextPoint[1]
 		
 		for item in radius:
 			ix = item[0]
 			iy = item[1]
-			if coord1+ix < 0 or coord1+ix > self.width-1 or coord2+iy < 0 or self.grayMatrix[coord1+ix][coord2+iy][1]!= regFrom:
+			if coord1+ix < 0 or coord1+ix > self.width-1 or coord2+iy < 0 or coord2+iy > self.height-1  or self.grayMatrix[coord1+ix][coord2+iy][1]!= regFrom:
 				pass
 			else:
 				self.grayMatrix[coord1+ix][coord2+iy] = (self.grayMatrix[coord1+ix][coord2+iy][0], regTo)
-				self.stack.append((coord1+ix, coord2+iy))
-
+				if (coord1+ix, coord2+iy) not in self.stack:
+					self.stack.append((coord1+ix, coord2+iy))
 			
 
 	def checkRegions(self, ndict, basePoint):
@@ -186,7 +187,6 @@ class ImageWorker:
 			
 	def StartAll(self):
 		self.makeGray()
-		# self.printThresh()
 		self.startRegionGrow()
 		self.howMuch()
 		self.drawImage()
